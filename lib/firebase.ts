@@ -2,12 +2,16 @@ import { getApp, getApps, initializeApp, FirebaseApp } from "firebase/app";
 import { getDatabase, Database } from "firebase/database";
 import { doc, getFirestore, setDoc, Firestore } from "firebase/firestore";
 
-NEXT_PUBLIC_FIREBASE_API_KEY=TEMP_KEY
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=TEMP.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=TEMP_PROJECT
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=TEMP.appspot.com
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=000000000
-NEXT_PUBLIC_FIREBASE_APP_ID=1:000000:web:temp
+const firebaseConfig = {
+  apiKey: "AIzaSyBRUkETMNs0MYbyP2H_PhIhJaEk2eAXZrU",
+  authDomain: "omaan-myah-m.firebaseapp.com",
+  databaseURL: "https://omaan-myah-m-default-rtdb.firebaseio.com",
+  projectId: "omaan-myah-m",
+  storageBucket: "omaan-myah-m.firebasestorage.app",
+  messagingSenderId: "984417007149",
+  appId: "1:984417007149:web:9eb4d96a6f920a4fb42aa4",
+  measurementId: "G-36QFNG8FHD"
+};
 
 const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey &&
