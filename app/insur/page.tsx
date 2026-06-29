@@ -1,7 +1,36 @@
+"use client";
+
+import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { siteContent } from "@/lib/site-content";
+import { readBookingDraft, saveBookingDraft } from "@/lib/booking-store";
 
 export default function SearchResultsPage() {
+  const [searchSummary, setSearchSummary] = useState<string>("");
+
+  useEffect(() => {
+    const booking = readBookingDraft();
+    if (!booking.search) return;
+
+    const { from, to, departure, passengers } = booking.search;
+    setSearchSummary(`${from} ← ${to} | ${departure} | ${passengers}`);
+  }, []);
+
+  function selectFlight(index: number) {
+    const destination = siteContent.destinations[index];
+    saveBookingDraft({
+      flight: {
+        destinationId: destination.id,
+        destinationCity: destination.city,
+        destinationCountry: destination.country,
+        fareName: index % 2 === 0 ? "Economy Convenience" : "Business Elite",
+        farePrice: destination.price,
+        routeType: index % 2 === 0 ? "رحلة مباشرة" : "رحلة مع توقف قصير",
+      },
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[#fcf6f8] px-4 py-10 md:px-8" dir="rtl">
       <div className="mx-auto max-w-6xl">
@@ -11,6 +40,11 @@ export default function SearchResultsPage() {
           <p className="mt-3 text-[#6d4a5b]">
             هذه الصفحة تعرض الرحلات المتاحة وتفاصيلها ضمن تدفق حجز طيران كامل.
           </p>
+          {searchSummary ? (
+            <div className="mt-4 inline-flex rounded-full bg-[#f5edf0] px-4 py-2 text-sm text-[#6d4a5b]">
+              {searchSummary}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4">
@@ -19,11 +53,15 @@ export default function SearchResultsPage() {
               key={destination.id}
               className="grid gap-4 rounded-[1.6rem] border border-[#eadbe1] bg-white p-5 shadow-sm md:grid-cols-[220px_1fr_auto]"
             >
-              <img
-                src={destination.image}
-                alt={destination.city}
-                className="h-44 w-full rounded-[1.2rem] object-cover"
-              />
+              <div className="relative h-44 w-full overflow-hidden rounded-[1.2rem]">
+                <Image
+                  src={destination.image}
+                  alt={destination.city}
+                  fill
+                  sizes="220px"
+                  className="object-cover"
+                />
+              </div>
               <div className="text-right">
                 <p className="text-sm text-[#8a6d7b]">
                   {destination.city}، {destination.country}
@@ -45,6 +83,7 @@ export default function SearchResultsPage() {
                 </div>
                 <Link
                   href="/step2"
+                  onClick={() => selectFlight(index)}
                   className="rounded-full bg-[#5f0f40] px-5 py-3 text-center font-semibold text-white transition hover:bg-[#7b124d]"
                 >
                   متابعة الحجز

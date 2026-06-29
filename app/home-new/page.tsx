@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { siteContent } from "@/lib/site-content";
+import { saveBookingDraft } from "@/lib/booking-store";
 
 export default function HomePage() {
+  const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const [tripType, setTripType] = useState("round-trip");
   const [formData, setFormData] = useState({
@@ -31,6 +34,17 @@ export default function HomePage() {
 
   function updateField(name: string, value: string) {
     setFormData((current) => ({ ...current, [name]: value }));
+  }
+
+  function handleSearch() {
+    saveBookingDraft({
+      status: "draft",
+      search: {
+        ...formData,
+        tripType: tripType as "round-trip" | "one-way",
+      },
+    });
+    router.push("/insur");
   }
 
   return (
@@ -206,7 +220,10 @@ export default function HomePage() {
               </label>
             )}
 
-            <Button className="h-auto rounded-full py-3 text-base font-bold">
+            <Button
+              className="h-auto rounded-full py-3 text-base font-bold"
+              onClick={handleSearch}
+            >
               ابحث عن الرحلات
             </Button>
           </div>
