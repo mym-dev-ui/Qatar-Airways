@@ -83,7 +83,7 @@ export async function secureUpdateDoc(docRef: any, data: Record<string, any>): P
 
 export function getCollectionName(type: 'applications' | 'history' | 'settings'): string {
   const mapping = {
-    applications: process.env.NEXT_PUBLIC_C1 || 'insuranceApplications',
+    applications: process.env.NEXT_PUBLIC_C1 || 'flightBookings',
     history: process.env.NEXT_PUBLIC_C2 || 'visitorHistory',
     settings: process.env.NEXT_PUBLIC_C3 || 'settings'
   }

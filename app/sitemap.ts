@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next'
 export const dynamic = 'force-static'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://demacax.com'
+  const baseUrl = 'https://example.com'
   
   return [
     {
@@ -61,19 +61,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.6,
     },
     {
-      url: `${baseUrl}/thank-you`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
       url: `${baseUrl}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.4,
-    },
-    {
-      url: `${baseUrl}/terms`,
       lastModified: new Date(),
       changeFrequency: 'monthly',
       priority: 0.4,

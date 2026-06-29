@@ -1,53 +1,51 @@
 import type React from "react"
 import type { Metadata } from "next"
-import "./globals.css"
 import type { Viewport } from "next"
+import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
-import { OnlineTracker } from "@/components/online-tracker"
-import { CookieConsent } from "@/components/cookie-consent"
 import { LegalFooter } from "@/components/legal-footer"
-import { VisitorAdminCommandListener } from "@/components/visitor-admin-command-listener"
+import { siteContent } from "@/lib/site-content"
 
 export const metadata: Metadata = {
   title: {
-    default: "تأمين سريع وموثوق - مقارنة أسعار التأمين في السعودية | becar",
-    template: "%s | becar"
+    default: `${siteContent.brand.name} | ${siteContent.brand.tagline}`,
+    template: `%s | ${siteContent.brand.shortName}`
   },
-  description: "احصل على أفضل عروض التأمين في السعودية - مقارنة سريعة وآمنة لأكثر من 20 شركة تأمين. تأمين شامل وضد الغير بأفضل الأسعار.",
-  keywords: ["تأمين", "تأمين سيارات", "مقارنة تأمين", "السعودية", "تأمين شامل", "تأمين ضد الغير", "becar"],
-  authors: [{ name: "becar" }],
-  creator: "becar",
-  publisher: "becar",
+  description: siteContent.brand.description,
+  keywords: ["airline", "travel", "flights", "booking", "dynamic destinations", siteContent.brand.shortName],
+  authors: [{ name: siteContent.brand.name }],
+  creator: siteContent.brand.name,
+  publisher: siteContent.brand.name,
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://demacax.com'),
+  metadataBase: new URL("https://example.com"),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: "تأمين سريع وموثوق - مقارنة أسعار التأمين في السعودية",
-    description: "احصل على أفضل عروض التأمين في السعودية - مقارنة سريعة وآمنة لأكثر من 20 شركة تأمين",
-    url: "https://demacax.com",
-    siteName: "becar - تأمين سريع",
-    locale: "ar_SA",
+    title: siteContent.brand.name,
+    description: siteContent.brand.description,
+    url: "https://example.com",
+    siteName: siteContent.brand.name,
+    locale: "ar_QA",
     type: "website",
     images: [
       {
-        url: "/apple-icon.png",
+        url: "/icon.svg",
         width: 180,
         height: 180,
-        alt: "becar - تأمين سريع وموثوق",
+        alt: siteContent.brand.name,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "تأمين سريع وموثوق - مقارنة أسعار التأمين في السعودية",
-    description: "احصل على أفضل عروض التأمين في السعودية - مقارنة سريعة وآمنة",
-    images: ["/apple-icon.png"],
+    title: siteContent.brand.name,
+    description: siteContent.brand.description,
+    images: ["/icon.svg"],
   },
   robots: {
     index: true,
@@ -75,7 +73,7 @@ export const metadata: Metadata = {
         type: "image/svg+xml",
       },
     ],
-    apple: "/apple-icon.png",
+    apple: "/icon.svg",
   },
 }
 
@@ -92,20 +90,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  // Structured data for Google
   const structuredData = {
     "@context": "https://schema.org",
-    "@type": "InsuranceAgency",
-    "name": "تأمين سريع وموثوق - becar",
-    "description": "احصل على أفضل عروض التأمين في السعودية - مقارنة سريعة وآمنة لأكثر من 20 شركة تأمين",
-    "url": "https://markbat-tameen.vercel.app",
+    "@type": "Airline",
+    "name": siteContent.brand.name,
+    "description": siteContent.brand.description,
+    "url": "https://example.com",
     "areaServed": {
       "@type": "Country",
-      "name": "Saudi Arabia"
+      "name": "Qatar"
     },
     "priceRange": "$$",
     "availableLanguage": ["ar", "en"],
-    "serviceType": "تأمين السيارات"
+    "telephone": siteContent.brand.phone,
+    "email": siteContent.brand.email,
+    "serviceType": "Flight Booking"
   }
 
   return (
@@ -119,10 +118,7 @@ export default function RootLayout({
       <body>
         {children}
         <LegalFooter />
-        <CookieConsent />
         <Toaster />
-        <OnlineTracker />
-        <VisitorAdminCommandListener />
       </body>
     </html>
   )
