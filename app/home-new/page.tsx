@@ -246,7 +246,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {siteContent.destinations.map((destination, index) => (
               <article
                 key={destination.id}
@@ -270,6 +270,26 @@ export default function HomePage() {
                   </p>
                 </div>
               </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid gap-5 rounded-[1.75rem] bg-[linear-gradient(135deg,#2d0a20,#5f0f40)] p-5 text-white md:grid-cols-[1fr_1fr] md:p-8">
+          <div className="text-right">
+            <p className="text-xs uppercase tracking-[0.25em] text-[#e3b5c4]">قطر 2022</p>
+            <h3 className="mt-2 text-3xl font-bold">{siteContent.featuredExperience.title}</h3>
+            <p className="mt-4 leading-8 text-white/80">
+              {siteContent.featuredExperience.description}
+            </p>
+          </div>
+          <div className="grid gap-3">
+            {siteContent.featuredExperience.highlights.map((highlight) => (
+              <div
+                key={highlight}
+                className="rounded-2xl border border-white/10 bg-white/10 p-4 text-right"
+              >
+                {highlight}
+              </div>
             ))}
           </div>
         </section>
