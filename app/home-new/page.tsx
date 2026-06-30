@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import {
   getDestinationPricing,
   passengerTypeLabels,
   type CabinClass,
+  type DestinationRecord,
   type PassengerType,
   type TripType,
 } from "@/lib/travel-data";
@@ -57,12 +59,27 @@ export default function HomePage() {
 
   function handleSearch() {
     if (!activeDestination) return;
+    const destinationId =
+      dataset.destinations.find((item) => item.city === formData.to)?.id || activeDestination.id;
     saveBookingDraft({
       status: "draft",
       search: {
         ...formData,
         tripType,
-        destinationId: activeDestination.id,
+        destinationId,
+      },
+    });
+    router.push("/insur");
+  }
+
+  function handleDestinationBooking(destination: DestinationRecord) {
+    saveBookingDraft({
+      status: "draft",
+      search: {
+        ...formData,
+        to: destination.city,
+        tripType,
+        destinationId: destination.id,
       },
     });
     router.push("/insur");
@@ -198,6 +215,78 @@ export default function HomePage() {
             <Button className="h-auto rounded-full py-3 text-base font-bold" onClick={handleSearch}>
               عرض الرحلات
             </Button>
+          </div>
+        </section>
+
+        <section className="rounded-[1.75rem] bg-[linear-gradient(180deg,#fffdfd,#f7eef2)] p-5 md:p-8">
+          <div className="flex flex-col gap-4 text-right md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-[#9a7485]">البلدان والمناطق</p>
+              <h3 className="mt-2 text-3xl font-bold text-[#4d102f]">استكشف الوجهات واحجز مباشرة من البطاقة</h3>
+            </div>
+            <p className="max-w-2xl text-[#745866]">
+              كل صورة تمثل منطقة ومدينة واضحة. عند الضغط على البطاقة يتم تجهيز البحث مباشرة لنفس الوجهة والانتقال إلى صفحة الرحلات.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {dataset.destinations.map((destination) => {
+              const destinationPrice = getDestinationPricing(
+                dataset,
+                destination.id,
+                tripType,
+                cabinClass,
+                passengerType,
+              );
+
+              return (
+                <button
+                  key={destination.id}
+                  type="button"
+                  onClick={() => handleDestinationBooking(destination)}
+                  className="group overflow-hidden rounded-[1.5rem] bg-white text-right shadow-[0_18px_45px_rgba(86,25,55,0.08)] transition hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(86,25,55,0.14)]"
+                >
+                  <div className="relative h-64 overflow-hidden">
+                    <Image
+                      src={destination.image}
+                      alt={destination.city}
+                      fill
+                      sizes="(max-width: 1280px) 50vw, 33vw"
+                      className="object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#220717] via-[#220717]/35 to-transparent" />
+                    <div className="absolute bottom-0 right-0 left-0 p-5 text-white">
+                      <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
+                        {destination.region}
+                      </div>
+                      <h4 className="mt-3 text-3xl font-extrabold">{destination.city}</h4>
+                      <p className="mt-1 text-white/80">{destination.country}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="rounded-2xl bg-[#f8edf2] px-4 py-3 text-left">
+                        <div className="text-xs text-[#8a6d7b]">يبدأ من</div>
+                        <div className="mt-1 text-lg font-extrabold text-[#5f0f40]">{formatCurrency(destinationPrice)}</div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-[#8a1538]">{destination.teaser}</p>
+                        <p className="mt-2 line-clamp-3 text-sm leading-7 text-[#6d4a5b]">{destination.description}</p>
+                      </div>
+                    </div>
+                    <div className="mt-5 flex items-center justify-between">
+                      <span className="text-sm text-[#7e6470]">
+                        {tripType === "round-trip" ? "ذهاب وعودة" : "ذهاب فقط"} · {cabinClassLabels[cabinClass]}
+                      </span>
+                      <span className="rounded-full bg-[#5f0f40] px-4 py-2 text-sm font-bold text-white">
+                        احجز هذه الوجهة
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
       </section>
