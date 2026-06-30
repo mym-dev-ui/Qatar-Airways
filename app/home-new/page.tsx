@@ -24,6 +24,7 @@ const defaultPassengerType: PassengerType = "adult";
 export default function HomePage() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [previousIndex, setPreviousIndex] = useState<number | null>(null);
   const [tripType, setTripType] = useState<TripType>("round-trip");
   const [cabinClass, setCabinClass] = useState<CabinClass>(defaultCabinClass);
   const [passengerType, setPassengerType] = useState<PassengerType>(defaultPassengerType);
@@ -57,10 +58,21 @@ export default function HomePage() {
   useEffect(() => {
     if (!featuredDestinations.length) return;
     const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % featuredDestinations.length);
+      setActiveIndex((current) => {
+        setPreviousIndex(current);
+        return (current + 1) % featuredDestinations.length;
+      });
     }, 5000);
     return () => window.clearInterval(timer);
   }, [featuredDestinations.length]);
+
+  useEffect(() => {
+    if (previousIndex === null) return;
+    const timer = window.setTimeout(() => {
+      setPreviousIndex(null);
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  }, [previousIndex]);
 
   const countries = useMemo(
     () => Array.from(new Set(dataset.destinations.map((destination) => destination.country))),
@@ -139,6 +151,8 @@ export default function HomePage() {
     cabinClass,
     passengerType,
   );
+  const previousDestination =
+    previousIndex !== null ? featuredDestinations[previousIndex] : null;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(138,21,56,0.12),transparent_30%),linear-gradient(180deg,#fffafc_0%,#f7f1f3_100%)] text-slate-900">
@@ -156,9 +170,19 @@ export default function HomePage() {
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pt-6 md:px-8">
         <div className="hero-fade-container relative grid min-h-[70vh] items-end gap-8 overflow-hidden rounded-[2rem] px-6 py-8 text-white shadow-[0_30px_70px_rgba(67,17,44,0.18)] md:grid-cols-[1.45fr_0.85fr] md:px-10 md:py-12">
+          {previousDestination ? (
+            <div
+              className="hero-fade-layer hero-fade-out absolute inset-0"
+              style={{
+                backgroundImage: `linear-gradient(90deg, rgba(33, 5, 26, 0.94) 0%, rgba(33, 5, 26, 0.8) 42%, rgba(33, 5, 26, 0.2) 100%), url(${previousDestination.image})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
+            />
+          ) : null}
           <div
             key={activeDestination.id}
-            className="hero-fade-layer absolute inset-0"
+            className="hero-fade-layer hero-fade-in absolute inset-0"
             style={{
               backgroundImage: `linear-gradient(90deg, rgba(33, 5, 26, 0.94) 0%, rgba(33, 5, 26, 0.8) 42%, rgba(33, 5, 26, 0.2) 100%), url(${activeDestination.image})`,
               backgroundSize: "cover",
@@ -214,7 +238,10 @@ export default function HomePage() {
                 onChange={(event) => {
                   updateField("to", event.target.value);
                   const nextIndex = featuredDestinations.findIndex((item) => item.city === event.target.value);
-                  if (nextIndex >= 0) setActiveIndex(nextIndex);
+                  if (nextIndex >= 0) {
+                    setPreviousIndex(activeIndex);
+                    setActiveIndex(nextIndex);
+                  }
                 }}
                 className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
               >
@@ -240,10 +267,11 @@ export default function HomePage() {
                   );
                   if (nextDestination) {
                     updateField("to", nextDestination.city);
-                    const nextIndex = featuredDestinations.findIndex(
-                      (item) => item.city === nextDestination.city,
-                    );
-                    if (nextIndex >= 0) setActiveIndex(nextIndex);
+                    const nextIndex = featuredDestinations.findIndex((item) => item.city === nextDestination.city);
+                    if (nextIndex >= 0) {
+                      setPreviousIndex(activeIndex);
+                      setActiveIndex(nextIndex);
+                    }
                   }
                 }}
                 className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
@@ -306,7 +334,10 @@ export default function HomePage() {
                   if (firstDestination) {
                     updateField("to", firstDestination.city);
                     const nextIndex = featuredDestinations.findIndex((item) => item.city === firstDestination.city);
-                    if (nextIndex >= 0) setActiveIndex(nextIndex);
+                    if (nextIndex >= 0) {
+                      setPreviousIndex(activeIndex);
+                      setActiveIndex(nextIndex);
+                    }
                   }
                 }}
                 className={`rounded-full px-4 py-2 text-sm font-bold transition ${
