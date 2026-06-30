@@ -155,15 +155,17 @@ export default function HomePage() {
       </header>
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pt-6 md:px-8">
-        <div
-          className="grid min-h-[70vh] items-end gap-8 overflow-hidden rounded-[2rem] px-6 py-8 text-white shadow-[0_30px_70px_rgba(67,17,44,0.18)] md:grid-cols-[1.45fr_0.85fr] md:px-10 md:py-12"
-          style={{
-            backgroundImage: `linear-gradient(90deg, rgba(33, 5, 26, 0.94) 0%, rgba(33, 5, 26, 0.8) 42%, rgba(33, 5, 26, 0.2) 100%), url(${activeDestination.image})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        >
-          <div className="text-right">
+        <div className="hero-fade-container relative grid min-h-[70vh] items-end gap-8 overflow-hidden rounded-[2rem] px-6 py-8 text-white shadow-[0_30px_70px_rgba(67,17,44,0.18)] md:grid-cols-[1.45fr_0.85fr] md:px-10 md:py-12">
+          <div
+            key={activeDestination.id}
+            className="hero-fade-layer absolute inset-0"
+            style={{
+              backgroundImage: `linear-gradient(90deg, rgba(33, 5, 26, 0.94) 0%, rgba(33, 5, 26, 0.8) 42%, rgba(33, 5, 26, 0.2) 100%), url(${activeDestination.image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          <div className="relative text-right">
             <p className="mb-3 text-xs uppercase tracking-[0.3em] text-[#e8bbc9]">رحلات مرنة وتسعير حي</p>
             <h1 className="max-w-[12ch] text-4xl font-extrabold leading-[1.05] md:text-7xl">
               احجز إلى {activeDestination.city} بثقة
@@ -185,7 +187,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-[1.5rem] border border-white/15 bg-white/10 p-6 text-right backdrop-blur-md">
+          <div className="relative rounded-[1.5rem] border border-white/15 bg-white/10 p-6 text-right backdrop-blur-md">
             <div className="text-sm text-white/70">الوجهة الحالية</div>
             <h2 className="mt-2 text-3xl font-bold">{activeDestination.city}</h2>
             <p className="mt-1 text-white/80">{activeDestination.country}</p>
