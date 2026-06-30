@@ -35,6 +35,9 @@ export default function ConfirmationPage() {
           <p>المسافر: {booking.passenger?.firstName} {booking.passenger?.lastName}</p>
           <p>الوجهة: {booking.flight?.destinationCity}، {booking.flight?.destinationCountry}</p>
           <p>المقعد: {booking.seat}</p>
+          <p>درجة السفر: {booking.flight?.fareName}</p>
+          <p>إجمالي الحجز: {booking.totals ? new Intl.NumberFormat("ar-QA", { style: "currency", currency: "QAR", maximumFractionDigits: 0 }).format(booking.totals.grandTotal) : "-"}</p>
+          <p>كود الخصم: {booking.promoCode || "لا يوجد"}</p>
           <p>الدفع: بطاقة تنتهي بـ {booking.payment?.last4}</p>
         </div>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">

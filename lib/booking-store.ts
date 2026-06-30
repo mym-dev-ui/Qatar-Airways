@@ -1,4 +1,4 @@
-export type TripType = "round-trip" | "one-way";
+import type { CabinClass, PassengerType, PromoCodeRecord, SeatMapSeat, TripType } from "@/lib/travel-data";
 
 export interface SearchData {
   from: string;
@@ -7,6 +7,7 @@ export interface SearchData {
   returnDate: string;
   passengers: string;
   tripType: TripType;
+  destinationId?: string;
 }
 
 export interface FlightSelection {
@@ -15,7 +16,11 @@ export interface FlightSelection {
   destinationCountry: string;
   fareName: string;
   farePrice: string;
+  baseFare: number;
   routeType: string;
+  cabinClass: CabinClass;
+  passengerType: PassengerType;
+  tripType: TripType;
 }
 
 export interface PassengerDetails {
@@ -42,6 +47,23 @@ export interface BookingRecord {
   passenger?: PassengerDetails;
   extras?: string[];
   seat?: string;
+  seatSelection?: SeatMapSeat;
+  promoCode?: string;
+  promoDiscount?: number;
+  appliedPromo?: PromoCodeRecord | null;
+  autoDiscounts?: Array<{
+    label: string;
+    amount: number;
+  }>;
+  totals?: {
+    baseFare: number;
+    extrasTotal: number;
+    seatTotal: number;
+    taxes: number;
+    subtotal: number;
+    discountTotal: number;
+    grandTotal: number;
+  };
   payment?: {
     cardholderName: string;
     last4: string;
