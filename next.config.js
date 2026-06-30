@@ -5,6 +5,14 @@ const nextConfig = {
         '*.repl.co',
         '*.replit.app',
     ],
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'images.unsplash.com',
+            },
+        ],
+    },
     async headers() {
         return [
             {
