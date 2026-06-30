@@ -30,6 +30,13 @@ export default function HomePage() {
   const [dataset, setDataset] = useState(readTravelDataset());
   const featuredDestinations = useMemo(() => getLandingDestinations(dataset), [dataset]);
   const activeDestination = featuredDestinations[activeIndex] || featuredDestinations[0];
+  const popularDestinations = useMemo(
+    () =>
+      dataset.destinations.filter((destination) =>
+        ["باريس", "نيويورك", "لندن", "إسطنبول", "دبي", "الدوحة"].includes(destination.city),
+      ),
+    [dataset.destinations],
+  );
   const commonCountries = useMemo(
     () => ["السعودية", "الكويت", "البحرين", "عُمان", "قطر", "الإمارات"],
     [],
@@ -372,6 +379,61 @@ export default function HomePage() {
                       <span className="rounded-full bg-[#5f0f40] px-4 py-2 text-sm font-bold text-white">
                         احجز هذه الوجهة
                       </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-[1.75rem] bg-white p-5 shadow-[0_18px_45px_rgba(86,25,55,0.08)] md:p-8">
+          <div className="flex flex-col gap-3 text-right md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-[#9a7485]">الأكثر شيوعاً</p>
+              <h3 className="mt-2 text-3xl font-bold text-[#4d102f]">الوجهات العالمية الأكثر طلباً</h3>
+            </div>
+            <p className="max-w-2xl text-[#745866]">
+              هذا القسم للوجهات الأشهر فقط مثل باريس ونيويورك ولندن. أما الدول الخليجية ومناطقها فتبقى في القسم الذي تحته.
+            </p>
+          </div>
+
+          <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {popularDestinations.map((destination) => {
+              const destinationPrice = getDestinationPricing(
+                dataset,
+                destination.id,
+                tripType,
+                cabinClass,
+                passengerType,
+              );
+
+              return (
+                <button
+                  key={destination.id}
+                  type="button"
+                  onClick={() => handleDestinationBooking(destination)}
+                  className="group overflow-hidden rounded-[1.5rem] bg-[#fcf8fa] text-right transition hover:-translate-y-1"
+                >
+                  <div className="relative h-64 overflow-hidden rounded-[1.4rem]">
+                    <Image
+                      src={destination.image}
+                      alt={destination.city}
+                      fill
+                      sizes="(max-width: 1280px) 50vw, 33vw"
+                      className="object-cover transition duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#220717] via-[#220717]/30 to-transparent" />
+                    <div className="absolute bottom-0 right-0 left-0 p-5 text-white">
+                      <div className="text-xs font-semibold text-white/80">{destination.region}</div>
+                      <h4 className="mt-2 text-3xl font-extrabold">{destination.city}</h4>
+                      <p className="mt-1 text-white/80">{destination.country}</p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-sm text-[#745866]">{destination.teaser}</div>
+                      <div className="text-lg font-extrabold text-[#5f0f40]">{formatCurrency(destinationPrice)}</div>
                     </div>
                   </div>
                 </button>
