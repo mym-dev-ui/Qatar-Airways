@@ -55,13 +55,6 @@ export default function HomePage() {
     return () => window.clearInterval(timer);
   }, [featuredDestinations.length]);
 
-  useEffect(() => {
-    if (activeDestination) {
-      setSelectedCountry(activeDestination.country);
-      setFormData((current) => ({ ...current, to: activeDestination.city }));
-    }
-  }, [activeDestination]);
-
   const countries = useMemo(
     () => Array.from(new Set(dataset.destinations.map((destination) => destination.country))),
     [dataset.destinations],
