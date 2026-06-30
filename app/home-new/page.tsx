@@ -18,12 +18,15 @@ import {
 } from "@/lib/travel-data";
 import { getLandingDestinations, readTravelDataset } from "@/lib/travel-store";
 
+const defaultCabinClass: CabinClass = "economy";
+const defaultPassengerType: PassengerType = "adult";
+
 export default function HomePage() {
   const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const [tripType, setTripType] = useState<TripType>("round-trip");
-  const [cabinClass, setCabinClass] = useState<CabinClass>("economy");
-  const [passengerType, setPassengerType] = useState<PassengerType>("adult");
+  const [cabinClass, setCabinClass] = useState<CabinClass>(defaultCabinClass);
+  const [passengerType, setPassengerType] = useState<PassengerType>(defaultPassengerType);
   const [dataset, setDataset] = useState(readTravelDataset());
   const featuredDestinations = useMemo(() => getLandingDestinations(dataset), [dataset]);
   const activeDestination = featuredDestinations[activeIndex] || featuredDestinations[0];
@@ -63,6 +66,15 @@ export default function HomePage() {
       dataset.destinations.find((item) => item.city === formData.to)?.id || activeDestination.id;
     saveBookingDraft({
       status: "draft",
+      flight: undefined,
+      extras: undefined,
+      seat: undefined,
+      seatSelection: undefined,
+      promoCode: undefined,
+      promoDiscount: undefined,
+      appliedPromo: undefined,
+      autoDiscounts: undefined,
+      totals: undefined,
       search: {
         ...formData,
         tripType,
@@ -75,6 +87,15 @@ export default function HomePage() {
   function handleDestinationBooking(destination: DestinationRecord) {
     saveBookingDraft({
       status: "draft",
+      flight: undefined,
+      extras: undefined,
+      seat: undefined,
+      seatSelection: undefined,
+      promoCode: undefined,
+      promoDiscount: undefined,
+      appliedPromo: undefined,
+      autoDiscounts: undefined,
+      totals: undefined,
       search: {
         ...formData,
         to: destination.city,

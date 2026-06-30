@@ -16,6 +16,9 @@ import {
 } from "@/lib/travel-data";
 import { readTravelDataset } from "@/lib/travel-store";
 
+const validCabinClasses: CabinClass[] = ["economy", "business", "first"];
+const validPassengerTypes: PassengerType[] = ["adult", "child", "infant"];
+
 export default function SearchResultsPage() {
   const dataset = useMemo(() => readTravelDataset(), []);
   const [searchSummary, setSearchSummary] = useState("");
@@ -33,8 +36,16 @@ export default function SearchResultsPage() {
     setTripType(bookingTripType);
     setSelectedDestination(destinationId || dataset.destinations[0]?.id || "");
     if (booking.flight) {
-      setCabinClass(booking.flight.cabinClass);
-      setPassengerType(booking.flight.passengerType);
+      setCabinClass(
+        validCabinClasses.includes(booking.flight.cabinClass)
+          ? booking.flight.cabinClass
+          : "economy",
+      );
+      setPassengerType(
+        validPassengerTypes.includes(booking.flight.passengerType)
+          ? booking.flight.passengerType
+          : "adult",
+      );
     }
   }, [dataset.destinations]);
 
