@@ -45,8 +45,8 @@ export default function HomePage() {
   const [formData, setFormData] = useState({
     from: "عمّان",
     to: activeDestination?.city || "",
-    departure: "2026-07-20",
-    returnDate: "2026-07-30",
+    departure: "",
+    returnDate: "",
     passengers: "1 مسافر",
   });
 
@@ -200,7 +200,7 @@ export default function HomePage() {
             <h3 className="mt-2 text-3xl font-bold text-[#4d102f]">ابحث وحدد نوع السعر من البداية</h3>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-2 text-right">
               <span className="text-sm text-[#7e6470]">من</span>
               <input value={formData.from} onChange={(event) => updateField("from", event.target.value)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3" />
@@ -222,14 +222,6 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">تاريخ المغادرة</span>
-              <input type="date" value={formData.departure} onChange={(event) => updateField("departure", event.target.value)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3" />
-            </label>
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">تاريخ العودة</span>
-              <input type="date" value={formData.returnDate} onChange={(event) => updateField("returnDate", event.target.value)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3" />
             </label>
           </div>
 
