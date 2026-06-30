@@ -192,9 +192,9 @@ export default function HomePage() {
                 }}
                 className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
               >
-                {featuredDestinations.map((destination) => (
+                {dataset.destinations.map((destination) => (
                   <option key={destination.id} value={destination.city}>
-                    {destination.city}
+                    {destination.city} - {destination.country} - {destination.region}
                   </option>
                 ))}
               </select>

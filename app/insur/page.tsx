@@ -107,7 +107,9 @@ export default function SearchResultsPage() {
         <div className="mb-6 grid gap-4 rounded-[1.6rem] bg-white p-5 shadow-sm md:grid-cols-4">
           <select value={selectedDestination} onChange={(event) => setSelectedDestination(event.target.value)} className="rounded-2xl border border-[#e7d9df] px-4 py-3">
             {dataset.destinations.map((destination) => (
-              <option key={destination.id} value={destination.id}>{destination.city}</option>
+              <option key={destination.id} value={destination.id}>
+                {destination.city} - {destination.country} - {destination.region}
+              </option>
             ))}
           </select>
           <select value={tripType} onChange={(event) => setTripType(event.target.value as TripType)} className="rounded-2xl border border-[#e7d9df] px-4 py-3">
