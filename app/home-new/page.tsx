@@ -30,6 +30,11 @@ export default function HomePage() {
   const [dataset, setDataset] = useState(readTravelDataset());
   const featuredDestinations = useMemo(() => getLandingDestinations(dataset), [dataset]);
   const activeDestination = featuredDestinations[activeIndex] || featuredDestinations[0];
+  const commonCountries = useMemo(
+    () => ["السعودية", "الكويت", "البحرين", "عُمان", "قطر", "الإمارات"],
+    [],
+  );
+  const [selectedCountry, setSelectedCountry] = useState(activeDestination?.country || "السعودية");
   const [formData, setFormData] = useState({
     from: "عمّان",
     to: activeDestination?.city || "",
@@ -52,9 +57,28 @@ export default function HomePage() {
 
   useEffect(() => {
     if (activeDestination) {
+      setSelectedCountry(activeDestination.country);
       setFormData((current) => ({ ...current, to: activeDestination.city }));
     }
   }, [activeDestination]);
+
+  const countries = useMemo(
+    () => Array.from(new Set(dataset.destinations.map((destination) => destination.country))),
+    [dataset.destinations],
+  );
+
+  const filteredDestinations = useMemo(
+    () => dataset.destinations.filter((destination) => destination.country === selectedCountry),
+    [dataset.destinations, selectedCountry],
+  );
+
+  useEffect(() => {
+    if (!filteredDestinations.length) return;
+    const hasCurrent = filteredDestinations.some((destination) => destination.city === formData.to);
+    if (!hasCurrent) {
+      setFormData((current) => ({ ...current, to: filteredDestinations[0].city }));
+    }
+  }, [filteredDestinations, formData.to]);
 
   function updateField(name: string, value: string) {
     setFormData((current) => ({ ...current, [name]: value }));
@@ -192,9 +216,9 @@ export default function HomePage() {
                 }}
                 className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
               >
-                {dataset.destinations.map((destination) => (
+                {filteredDestinations.map((destination) => (
                   <option key={destination.id} value={destination.city}>
-                    {destination.city} - {destination.country} - {destination.region}
+                    {destination.city} - {destination.region}
                   </option>
                 ))}
               </select>
@@ -210,6 +234,33 @@ export default function HomePage() {
           </div>
 
           <div className="mt-4 grid gap-4 md:grid-cols-4">
+            <label className="flex flex-col gap-2 text-right">
+              <span className="text-sm text-[#7e6470]">الدولة</span>
+              <select
+                value={selectedCountry}
+                onChange={(event) => {
+                  const nextCountry = event.target.value;
+                  setSelectedCountry(nextCountry);
+                  const nextDestination = dataset.destinations.find(
+                    (destination) => destination.country === nextCountry,
+                  );
+                  if (nextDestination) {
+                    updateField("to", nextDestination.city);
+                    const nextIndex = featuredDestinations.findIndex(
+                      (item) => item.city === nextDestination.city,
+                    );
+                    if (nextIndex >= 0) setActiveIndex(nextIndex);
+                  }
+                }}
+                className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
+              >
+                {countries.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="flex flex-col gap-2 text-right">
               <span className="text-sm text-[#7e6470]">نوع الرحلة</span>
               <select value={tripType} onChange={(event) => setTripType(event.target.value as TripType)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3">
@@ -250,8 +301,33 @@ export default function HomePage() {
             </p>
           </div>
 
+          <div className="mt-5 flex flex-wrap justify-end gap-3">
+            {commonCountries.map((country) => (
+              <button
+                key={country}
+                type="button"
+                onClick={() => {
+                  setSelectedCountry(country);
+                  const firstDestination = dataset.destinations.find((destination) => destination.country === country);
+                  if (firstDestination) {
+                    updateField("to", firstDestination.city);
+                    const nextIndex = featuredDestinations.findIndex((item) => item.city === firstDestination.city);
+                    if (nextIndex >= 0) setActiveIndex(nextIndex);
+                  }
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                  selectedCountry === country
+                    ? "bg-[#5f0f40] text-white"
+                    : "bg-white text-[#5f0f40] shadow-sm"
+                }`}
+              >
+                {country}
+              </button>
+            ))}
+          </div>
+
           <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {dataset.destinations.map((destination) => {
+            {filteredDestinations.map((destination) => {
               const destinationPrice = getDestinationPricing(
                 dataset,
                 destination.id,
