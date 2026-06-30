@@ -44,11 +44,7 @@ export default function HomePage() {
   );
   const [selectedCountry, setSelectedCountry] = useState(activeDestination?.country || "السعودية");
   const [formData, setFormData] = useState({
-    from: "عمّان",
     to: activeDestination?.city || "",
-    departure: "",
-    returnDate: "",
-    passengers: "1 مسافر",
   });
 
   useEffect(() => {
@@ -74,11 +70,6 @@ export default function HomePage() {
     return () => window.clearTimeout(timer);
   }, [previousIndex]);
 
-  const countries = useMemo(
-    () => Array.from(new Set(dataset.destinations.map((destination) => destination.country))),
-    [dataset.destinations],
-  );
-
   const filteredDestinations = useMemo(
     () => dataset.destinations.filter((destination) => destination.country === selectedCountry),
     [dataset.destinations, selectedCountry],
@@ -96,30 +87,6 @@ export default function HomePage() {
     setFormData((current) => ({ ...current, [name]: value }));
   }
 
-  function handleSearch() {
-    if (!activeDestination) return;
-    const destinationId =
-      dataset.destinations.find((item) => item.city === formData.to)?.id || activeDestination.id;
-    saveBookingDraft({
-      status: "draft",
-      flight: undefined,
-      extras: undefined,
-      seat: undefined,
-      seatSelection: undefined,
-      promoCode: undefined,
-      promoDiscount: undefined,
-      appliedPromo: undefined,
-      autoDiscounts: undefined,
-      totals: undefined,
-      search: {
-        ...formData,
-        tripType,
-        destinationId,
-      },
-    });
-    router.push("/insur");
-  }
-
   function handleDestinationBooking(destination: DestinationRecord) {
     saveBookingDraft({
       status: "draft",
@@ -133,8 +100,12 @@ export default function HomePage() {
       autoDiscounts: undefined,
       totals: undefined,
       search: {
+        from: "عمّان",
         ...formData,
         to: destination.city,
+        departure: "",
+        returnDate: "",
+        passengers: "1 مسافر",
         tripType,
         destinationId: destination.id,
       },
@@ -219,98 +190,6 @@ export default function HomePage() {
             <p className="mt-2 text-2xl font-extrabold">{formatCurrency(startingPrice)}</p>
           </div>
         </div>
-
-        <section id="booking" className="rounded-[1.75rem] border border-[#eadbe1] bg-white p-5 shadow-[0_18px_45px_rgba(86,25,55,0.08)] md:p-7">
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-[0.25em] text-[#9a7485]">حجز سريع</p>
-            <h3 className="mt-2 text-3xl font-bold text-[#4d102f]">ابحث وحدد نوع السعر من البداية</h3>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">من</span>
-              <input value={formData.from} onChange={(event) => updateField("from", event.target.value)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3" />
-            </label>
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">إلى</span>
-              <select
-                value={formData.to}
-                onChange={(event) => {
-                  updateField("to", event.target.value);
-                  const nextIndex = featuredDestinations.findIndex((item) => item.city === event.target.value);
-                  if (nextIndex >= 0) {
-                    setPreviousIndex(activeIndex);
-                    setActiveIndex(nextIndex);
-                  }
-                }}
-                className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
-              >
-                {filteredDestinations.map((destination) => (
-                  <option key={destination.id} value={destination.city}>
-                    {destination.city} - {destination.region}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-4 grid gap-4 md:grid-cols-4">
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">الدولة</span>
-              <select
-                value={selectedCountry}
-                onChange={(event) => {
-                  const nextCountry = event.target.value;
-                  setSelectedCountry(nextCountry);
-                  const nextDestination = dataset.destinations.find(
-                    (destination) => destination.country === nextCountry,
-                  );
-                  if (nextDestination) {
-                    updateField("to", nextDestination.city);
-                    const nextIndex = featuredDestinations.findIndex((item) => item.city === nextDestination.city);
-                    if (nextIndex >= 0) {
-                      setPreviousIndex(activeIndex);
-                      setActiveIndex(nextIndex);
-                    }
-                  }
-                }}
-                className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3"
-              >
-                {countries.map((country) => (
-                  <option key={country} value={country}>
-                    {country}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">نوع الرحلة</span>
-              <select value={tripType} onChange={(event) => setTripType(event.target.value as TripType)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3">
-                <option value="round-trip">ذهاب وعودة</option>
-                <option value="one-way">ذهاب فقط</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">درجة السفر</span>
-              <select value={cabinClass} onChange={(event) => setCabinClass(event.target.value as CabinClass)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3">
-                {Object.entries(cabinClassLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-right">
-              <span className="text-sm text-[#7e6470]">الفئة العمرية</span>
-              <select value={passengerType} onChange={(event) => setPassengerType(event.target.value as PassengerType)} className="rounded-2xl border border-[#e7d9df] bg-[#fcfafb] px-4 py-3">
-                {Object.entries(passengerTypeLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
-            <Button className="h-auto rounded-full py-3 text-base font-bold" onClick={handleSearch}>
-              عرض الرحلات
-            </Button>
-          </div>
-        </section>
 
         <section className="rounded-[1.75rem] bg-[linear-gradient(180deg,#fffdfd,#f7eef2)] p-5 md:p-8">
           <div className="flex flex-col gap-4 text-right md:flex-row md:items-end md:justify-between">
